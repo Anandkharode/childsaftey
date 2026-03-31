@@ -41,7 +41,8 @@ class LoginController extends GetxController {
         backgroundColor: const Color(0xFF004E32),
         colorText: Colors.white,
       );
-      // TODO: Navigate to Home/Dashboard
+      
+      Get.offAllNamed(AppRoutes.main);
       
     } on FirebaseAuthException catch (e) {
       Get.snackbar(
@@ -56,6 +57,15 @@ class LoginController extends GetxController {
   }
 
   void goToSignup() => Get.toNamed(AppRoutes.signup);
+
+  void goToForgotPassword() {
+    Get.snackbar(
+      'Forgot Password', 'Password reset flow not implemented yet.',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.black87,
+      colorText: Colors.white,
+    );
+  }
 
   String? emailValidator(String? value) {
     if (value == null || value.isEmpty) return 'Please enter your email';

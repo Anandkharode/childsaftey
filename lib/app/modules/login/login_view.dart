@@ -72,7 +72,26 @@ class LoginView extends GetView<LoginController> {
                               size: 20,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          
+                          // Forgot Password
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: controller.goToForgotPassword,
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                minimumSize: const Size(50, 30),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                'Forgot Password?',
+                                style: AppTextStyles.labelMd(
+                                  color: AppColors.primaryContainer,
+                                ).copyWith(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
 
                           // ── Security badge ─────────────────────────────
                           _SecurityBadge(),
