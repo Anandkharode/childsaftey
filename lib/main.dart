@@ -51,45 +51,7 @@ class ChildSafetyApp extends StatelessWidget {
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaler: TextScaler.noScaling),
-          child: Stack(
-            children: [
-              child!,
-              Positioned(
-                bottom: 80,
-                right: 20,
-                child: Material(
-                  color: Colors.transparent,
-                  child: FloatingActionButton(
-                    heroTag: 'dev_menu',
-                    backgroundColor: Colors.black87,
-                    mini: true,
-                    onPressed: () {
-                      Get.bottomSheet(
-                        Container(
-                          color: Colors.white,
-                          child: SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.all(16.0),
-                                  child: Text('Dev Menu (Skip Auth) - All Screens', style: TextStyle(fontWeight: FontWeight.bold)),
-                                ),
-                                ListTile(title: const Text('Splash Screen'), onTap: () => Get.offAllNamed(AppRoutes.splash)),
-                                ListTile(title: const Text('Login Screen'), onTap: () => Get.offAllNamed(AppRoutes.login)),
-                                ListTile(title: const Text('Signup Screen'), onTap: () => Get.offAllNamed(AppRoutes.signup)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Icon(Icons.developer_mode, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          child: child!,
         );
       },
     );

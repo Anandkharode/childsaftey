@@ -25,10 +25,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.macOS:
         return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -42,37 +39,47 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'DUMMY_API_KEY_WEB',
-    appId: '1:1234567890:web:abcdef',
-    messagingSenderId: '1234567890',
-    projectId: 'childsafety-dummy',
-    authDomain: 'childsafety-dummy.firebaseapp.com',
-    storageBucket: 'childsafety-dummy.appspot.com',
+    apiKey: 'AIzaSyCuO58CnYcsQzRonFboe8-Izy-YKOByTyU',
+    appId: '1:511757997969:web:99df83689ba06486052c30',
+    messagingSenderId: '511757997969',
+    projectId: 'child-59a51',
+    authDomain: 'child-59a51.firebaseapp.com',
+    storageBucket: 'child-59a51.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'DUMMY_API_KEY_ANDROID',
-    appId: '1:1234567890:android:abcdef',
-    messagingSenderId: '1234567890',
-    projectId: 'childsafety-dummy',
-    storageBucket: 'childsafety-dummy.appspot.com',
+    apiKey: 'AIzaSyDtT8w8wFUNf8YtmVPmdkEOJEbDhLYwgVs',
+    appId: '1:511757997969:android:6f236bfc731b58ea052c30',
+    messagingSenderId: '511757997969',
+    projectId: 'child-59a51',
+    storageBucket: 'child-59a51.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'DUMMY_API_KEY_IOS',
-    appId: '1:1234567890:ios:abcdef',
-    messagingSenderId: '1234567890',
-    projectId: 'childsafety-dummy',
-    storageBucket: 'childsafety-dummy.appspot.com',
-    iosBundleId: 'com.example.childsafety',
+    apiKey: 'AIzaSyCkhhSRh9r4z6KV0Vj5HJ56d7VcNCVK-48',
+    appId: '1:511757997969:ios:9999f63032a38bb1052c30',
+    messagingSenderId: '511757997969',
+    projectId: 'child-59a51',
+    storageBucket: 'child-59a51.firebasestorage.app',
+    iosBundleId: 'com.example.child',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'DUMMY_API_KEY_MACOS',
-    appId: '1:1234567890:ios:abcdef',
-    messagingSenderId: '1234567890',
-    projectId: 'childsafety-dummy',
-    storageBucket: 'childsafety-dummy.appspot.com',
-    iosBundleId: 'com.example.childsafety.macos',
+    apiKey: 'AIzaSyCkhhSRh9r4z6KV0Vj5HJ56d7VcNCVK-48',
+    appId: '1:511757997969:ios:9999f63032a38bb1052c30',
+    messagingSenderId: '511757997969',
+    projectId: 'child-59a51',
+    storageBucket: 'child-59a51.firebasestorage.app',
+    iosBundleId: 'com.example.child',
   );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyCuO58CnYcsQzRonFboe8-Izy-YKOByTyU',
+    appId: '1:511757997969:web:696ef6e6b9e024a6052c30',
+    messagingSenderId: '511757997969',
+    projectId: 'child-59a51',
+    authDomain: 'child-59a51.firebaseapp.com',
+    storageBucket: 'child-59a51.firebasestorage.app',
+  );
+
 }
