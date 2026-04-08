@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -80,7 +83,7 @@ class MainController extends GetxController {
         return;
       }
     }
-
+    
     directionLabel.value = "Scanning ESP32...";
 
     // 3. Scan for "ESP32_Compass"
@@ -142,9 +145,11 @@ class MainController extends GetxController {
     }
   }
 
+  DateTime _lastRssiCheck = DateTime.now();
+
   /// Function to process incoming BLE data from the ESP32.
   void listenToBleData(BluetoothCharacteristic characteristic) {
-    characteristic.lastValueStream.listen((value) {
+    characteristic.lastValueStream.listen((value) async {
       if (value.isEmpty) return;
 
       try {
@@ -159,7 +164,19 @@ class MainController extends GetxController {
           headingAngle.value = heading;
           directionLabel.value = direction;
           
-          print("BLE Heading: $heading");
+          // Securely calculate physical meters via RSSI without deadlocking GATT
+          // Limited to checking once every 2 seconds!
+          if (DateTime.now().difference(_lastRssiCheck).inSeconds >= 2) {
+            _lastRssiCheck = DateTime.now();
+            try {
+              if (_espDevice != null) {
+                int rssi = await _espDevice!.readRssi();
+                // Calculate decibel loss physics assuming -59dBm at 1m with a path-loss index of 2
+                double calculatedDist = math.pow(10, (-59 - rssi) / 20.0).toDouble();
+                distance.value = double.parse(calculatedDist.toStringAsFixed(1));
+              }
+            } catch (_) {}
+          }
         }
       } catch (e) {
         print("BLE Decode Error: $e");
