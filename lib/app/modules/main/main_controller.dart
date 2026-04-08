@@ -1,5 +1,169 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:get/get.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class MainController extends GetxController {
-  // Placeholder controller
+  // Reactive properties that the view will listen to
+  final distance = 2.8.obs;
+  final headingAngle = 0.0.obs; // In degrees
+  final directionLabel = "Disconnected".obs;
+
+  final isConnected = false.obs;
+  final isScanning = false.obs;
+
+  StreamSubscription<List<ScanResult>>? _scanSubscription;
+  BluetoothDevice? _espDevice;
+
+  static const String SERVICE_UUID = "12345678-1234-1234-1234-123456789abc";
+  static const String CHARACTERISTIC_UUID = "87654321-4321-4321-4321-cba987654321";
+
+  @override
+  void onInit() {
+    super.onInit();
+    startBleScan();
+  }
+
+  @override
+  void onClose() {
+    _scanSubscription?.cancel();
+    _espDevice?.disconnect();
+    super.onClose();
+  }
+
+  void toggleBluetooth() {
+    if (isConnected.value || isScanning.value) {
+      FlutterBluePlus.stopScan();
+      _espDevice?.disconnect();
+      isScanning.value = false;
+      isConnected.value = false;
+      directionLabel.value = "Disconnected";
+    } else {
+      startBleScan();
+    }
+  }
+
+  Future<void> startBleScan() async {
+    isScanning.value = true;
+    directionLabel.value = "Starting...";
+
+    // 1. Request permissions for Android seamlessly
+    await [
+      Permission.location,
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+    ].request();
+
+    // 2. Wait for adapter to turn on
+    if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+      try {
+        if (GetPlatform.isAndroid) {
+          directionLabel.value = "Turning on BT...";
+          await FlutterBluePlus.turnOn();
+          await Future.delayed(const Duration(seconds: 2));
+        } else {
+          directionLabel.value = "Please turn on BT";
+          isScanning.value = false;
+          return;
+        }
+      } catch (e) {
+        directionLabel.value = "BT Error";
+        isScanning.value = false;
+        return;
+      }
+      
+      // Check again if it successfully connected
+      if (await FlutterBluePlus.adapterState.first != BluetoothAdapterState.on) {
+        directionLabel.value = "Bluetooth is off";
+        isScanning.value = false;
+        return;
+      }
+    }
+
+    directionLabel.value = "Scanning ESP32...";
+
+    // 3. Scan for "ESP32_Compass"
+    _scanSubscription = FlutterBluePlus.onScanResults.listen((results) {
+      for (ScanResult r in results) {
+        if (r.device.platformName == "ESP32_Compass" || r.advertisementData.advName == "ESP32_Compass") {
+          FlutterBluePlus.stopScan();
+          _connectToDevice(r.device);
+          break;
+        }
+      }
+    });
+
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+    
+    // Auto-timeout hook
+    Future.delayed(const Duration(seconds: 15), () {
+      if (!isConnected.value && directionLabel.value == "Scanning ESP32...") {
+        isScanning.value = false;
+        directionLabel.value = "Scan Timeout";
+      }
+    });
+  }
+
+  Future<void> _connectToDevice(BluetoothDevice device) async {
+    directionLabel.value = "Linking...";
+    _espDevice = device;
+
+    // Listen to device connection state
+    device.connectionState.listen((dynamic state) {
+      if (state.toString().toLowerCase().contains('disconnected')) {
+        directionLabel.value = "Disconnected";
+        isConnected.value = false;
+        isScanning.value = false;
+      }
+    });
+
+    try {
+      await device.connect();
+      directionLabel.value = "Connected";
+      isConnected.value = true;
+      isScanning.value = false;
+
+      // 4. Discover BLE Services and our specific UUID
+      List<BluetoothService> services = await device.discoverServices();
+      for (BluetoothService service in services) {
+        if (service.uuid.toString() == SERVICE_UUID) {
+          for (BluetoothCharacteristic c in service.characteristics) {
+            if (c.uuid.toString() == CHARACTERISTIC_UUID) {
+               // 5. Start receiving notifications!
+              await c.setNotifyValue(true);
+              listenToBleData(c);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      directionLabel.value = "Error connecting";
+    }
+  }
+
+  /// Function to process incoming BLE data from the ESP32.
+  void listenToBleData(BluetoothCharacteristic characteristic) {
+    characteristic.lastValueStream.listen((value) {
+      if (value.isEmpty) return;
+
+      try {
+        String data = utf8.decode(value);
+        List<String> parts = data.split(',');
+
+        if (parts.length >= 2) {
+          double heading = double.parse(parts[0]);
+          String direction = parts[1].trim();
+
+          // Update our reactive variables
+          headingAngle.value = heading;
+          directionLabel.value = direction;
+          
+          print("BLE Heading: $heading");
+        }
+      } catch (e) {
+        print("BLE Decode Error: $e");
+      }
+    });
+  }
 }

@@ -279,6 +279,7 @@ class _SecurityBadge extends StatelessWidget {
             style: AppTextStyles.labelMd(
               color: AppColors.onTertiaryFixedVar,
             ),
+            softWrap: true,
           ),
         ],
       ),
