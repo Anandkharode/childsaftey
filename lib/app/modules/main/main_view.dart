@@ -94,35 +94,52 @@ class _DashboardHeader extends GetView<MainController> {
 class _StatusBanner extends GetView<MainController> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2F3B56),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFF8C4A03),
-              borderRadius: BorderRadius.circular(12),
+    return Obx(() {
+      final isExceeded = controller.isBoundaryExceeded.value;
+      final bannerColor = isExceeded ? const Color(0xFF3A1F1F) : const Color(0xFF2F3B56);
+      final borderColor = isExceeded ? Color.fromARGB(255, 230, 123, 123).withOpacity(0.4) : Colors.white12;
+      final iconBgColor = isExceeded ? const Color(0xFFB82A2A) : const Color(0xFF8C4A03);
+      final warningText = isExceeded 
+        ? 'CHILD OUT OF SAFE RANGE!'
+        : 'Child is heading ${controller.directionLabel.value} (${controller.distance.value}m)';
+      
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: bannerColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor, width: isExceeded ? 1.5 : 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                isExceeded ? Icons.error_rounded : Icons.warning_amber_rounded, 
+                color: Colors.white, 
+                size: 18
+              ),
             ),
-            child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Obx(() => Text(
-              'Child is heading ${controller.directionLabel.value} (${controller.distance.value}m)',
-              style: AppTextStyles.titleMd(color: Colors.white),
-            )),
-          ),
-        ],
-      ),
-    );
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                warningText,
+                style: AppTextStyles.titleMd(
+                  color: isExceeded ? const Color(0xFFE47B7B) : Colors.white
+                ),
+                softWrap: true,
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -147,16 +164,53 @@ class _StatusCard extends GetView<MainController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Child in Safe Range', style: AppTextStyles.titleMd(color: const Color(0xFF7BE4A5))),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Obx(() => Text(
+                controller.distance.value <= controller.boundaryDistance.value 
+                  ? 'Child in Safe Range' 
+                  : 'Out of Range!', 
+                style: AppTextStyles.titleMd(
+                  color: controller.distance.value <= controller.boundaryDistance.value 
+                    ? const Color(0xFF7BE4A5) 
+                    : const Color(0xFFE47B7B),
+                )
+              )),
+              Obx(() => Text(
+                'Max: ${controller.boundaryDistance.value.toStringAsFixed(1)}m', 
+                style: AppTextStyles.bodySm(color: Colors.white70)
+              )),
+            ],
+          ),
           const SizedBox(height: 18),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Obx(() => Text('${controller.distance.value}', style: AppTextStyles.displayMd(color: Colors.white))),
-              const SizedBox(width: 6),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text('m', style: AppTextStyles.titleMd(color: const Color(0xFF7BE4A5))),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Obx(() => Text('${controller.distance.value}', style: AppTextStyles.displayMd(color: Colors.white))),
+                  const SizedBox(width: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('m', style: AppTextStyles.titleMd(color: Colors.white70)),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Obx(() => Slider(
+                  value: controller.boundaryDistance.value,
+                  min: 1.0,
+                  max: 5.0,
+                  divisions: 8,
+                  activeColor: const Color(0xFF5ACEFF),
+                  inactiveColor: Colors.white12,
+                  onChanged: (val) {
+                    controller.boundaryDistance.value = val;
+                  },
+                )),
               ),
             ],
           ),
@@ -165,20 +219,26 @@ class _StatusCard extends GetView<MainController> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Distance from Anchor', style: AppTextStyles.bodySm(color: Colors.white70)),
-              Row(
-                children: List.generate(5, (index) {
-                  final levelColor = index < 4 ? const Color(0xFF7BE4A5) : const Color(0xFF2F4360);
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    width: 8,
-                    height: 24 - index * 3,
-                    decoration: BoxDecoration(
-                      color: levelColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  );
-                }),
-              )
+              Obx(() {
+                // Determine signal bars inversely mapped to the 5-meter max span
+                int bars = 5 - (controller.distance.value).floor();
+                bars = bars.clamp(0, 5); // Fallback bounds between 0 and 5 bars
+
+                return Row(
+                  children: List.generate(5, (index) {
+                    final levelColor = index < bars ? const Color(0xFF7BE4A5) : const Color(0xFF2F4360);
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      width: 8,
+                      height: 24 - index * 3,
+                      decoration: BoxDecoration(
+                        color: levelColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    );
+                  }),
+                );
+              }),
             ],
           ),
           const SizedBox(height: 6),
@@ -211,6 +271,7 @@ class _RadarCard extends GetView<MainController> {
                     painter: _RadarPainter(
                       heading: controller.headingAngle.value,
                       distance: controller.distance.value,
+                      boundaryDistance: controller.boundaryDistance.value,
                     ),
                     child: const SizedBox.expand(),
                   )),
@@ -299,64 +360,64 @@ class _RadarCard extends GetView<MainController> {
 class _RadarPainter extends CustomPainter {
   final double heading;
   final double distance;
+  final double boundaryDistance;
 
-  _RadarPainter({required this.heading, required this.distance});
+  _RadarPainter({required this.heading, required this.distance, required this.boundaryDistance});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final paint = Paint()..style = PaintingStyle.stroke;
     
-    // Confine radii to the smallest dimension to never overflow the box
+    // Confine radii to never overflow the box
     final maxRadius = (size.width < size.height ? size.width : size.height) / 2.0 * 0.95;
 
+    final gridPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = const Color.fromRGBO(255, 255, 255, 0.12);
+
+    // Draw grid natively
     for (int i = 1; i <= 5; i++) {
-      paint.color = Color.fromRGBO(255, 255, 255, 0.08 * (6 - i));
-      paint.strokeWidth = 1.2;
-      canvas.drawCircle(center, maxRadius * 0.2 * i, paint);
+      canvas.drawCircle(center, maxRadius * 0.2 * i, gridPaint);
     }
 
-    paint.color = Color.fromRGBO(90, 206, 255, 0.65);
-    paint.strokeWidth = 2;
-    canvas.drawCircle(center, maxRadius * 0.75, paint);
+    // Draw boundary ring natively
+    final boundaryPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = const Color.fromRGBO(90, 206, 255, 0.8)
+      ..strokeWidth = 2.0;
 
-    final radarPaint = Paint()
-      ..color = Color.fromRGBO(90, 206, 255, 0.4)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(center.translate(maxRadius * 0.35, -maxRadius * 0.25), 10, radarPaint);
+    canvas.drawCircle(center, maxRadius * (boundaryDistance / 5.0), boundaryPaint);
 
-    paint
+    final linePaint = Paint()
+      ..style = PaintingStyle.stroke
       ..color = const Color(0xFF5ACEFF)
-      ..strokeWidth = 2.3;
+      ..strokeWidth = 2.4;
     
-    // Convert heading degrees to radians, where 0 degrees is North (top)
-    final double angleRad = (heading - 90) * math.pi / 180.0;
-    
-    // Scale distance based on max supported distance (5m)
-    final double distanceScale = (distance / 5.0).clamp(0.0, 1.0);
+    // Enforce visual distance
+    final double visualDistance = distance < 0.75 ? 0.75 : distance;
+    final double distanceScale = (visualDistance / 5.0).clamp(0.0, 1.0);
 
+    final double angleRad = (heading - 90) * math.pi / 180.0;
     final double dx = maxRadius * distanceScale * math.cos(angleRad);
     final double dy = maxRadius * distanceScale * math.sin(angleRad);
     final end = Offset(center.dx + dx, center.dy + dy);
-    canvas.drawLine(center, end, paint);
 
-    final arrowPaint = Paint()..color = const Color(0xFF5ACEFF);
-    final double angle = math.atan2(dy, dx);
-    final double arrowSize = 14.0;
-    
-    final Path arrowPath = Path()
-      ..moveTo(end.dx, end.dy)
-      ..lineTo(end.dx - arrowSize * math.cos(angle - math.pi / 7), end.dy - arrowSize * math.sin(angle - math.pi / 7))
-      ..lineTo(end.dx - arrowSize * math.cos(angle + math.pi / 7), end.dy - arrowSize * math.sin(angle + math.pi / 7))
-      ..close();
-    canvas.drawPath(arrowPath, arrowPaint);
+    // Draw tracker line
+    canvas.drawLine(center, end, linePaint);
 
+    // Draw Tracker Bead
+    final beadPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = const Color(0xFF5ACEFF);
+    canvas.drawCircle(end, 6.0, beadPaint);
+
+    // Labels
     final labelStyle = const TextStyle(color: Colors.white54, fontSize: 11);
     final textPainter = TextPainter(textDirection: TextDirection.ltr);
     for (int i = 1; i <= 5; i++) {
       textPainter.text = TextSpan(text: '${i}m', style: labelStyle);
       textPainter.layout();
-      // Draw labels vertically along the top center axis to avoid the house box
       final offset = Offset(center.dx - textPainter.width / 2, center.dy - maxRadius * 0.2 * i - textPainter.height / 2);
       textPainter.paint(canvas, offset);
     }
@@ -364,7 +425,9 @@ class _RadarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RadarPainter oldDelegate) {
-    return oldDelegate.heading != heading || oldDelegate.distance != distance;
+    return oldDelegate.heading != heading || 
+           oldDelegate.distance != distance || 
+           oldDelegate.boundaryDistance != boundaryDistance;
   }
 }
 

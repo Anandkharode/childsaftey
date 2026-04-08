@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class MainController extends GetxController {
   // Reactive properties that the view will listen to
@@ -13,11 +12,15 @@ class MainController extends GetxController {
   final headingAngle = 0.0.obs; // In degrees
   final directionLabel = "Disconnected".obs;
 
+  final boundaryDistance = 3.0.obs; // User-defined boundary limit in meters
   final isConnected = false.obs;
   final isScanning = false.obs;
+  final isBoundaryExceeded = false.obs; // Track boundary alert state
+  final lastAlertTime = DateTime.now().obs; // Prevent alert spam
 
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   BluetoothDevice? _espDevice;
+  bool _previousBoundaryState = false; // Track state change
 
   static const String SERVICE_UUID = "12345678-1234-1234-1234-123456789abc";
   static const String CHARACTERISTIC_UUID = "87654321-4321-4321-4321-cba987654321";
@@ -165,8 +168,8 @@ class MainController extends GetxController {
           directionLabel.value = direction;
           
           // Securely calculate physical meters via RSSI without deadlocking GATT
-          // Limited to checking once every 2 seconds!
-          if (DateTime.now().difference(_lastRssiCheck).inSeconds >= 2) {
+          // Limited to checking once every 1 second!
+          if (DateTime.now().difference(_lastRssiCheck).inMilliseconds >= 1000) {
             _lastRssiCheck = DateTime.now();
             try {
               if (_espDevice != null) {
@@ -174,6 +177,25 @@ class MainController extends GetxController {
                 // Calculate decibel loss physics assuming -59dBm at 1m with a path-loss index of 2
                 double calculatedDist = math.pow(10, (-59 - rssi) / 20.0).toDouble();
                 distance.value = double.parse(calculatedDist.toStringAsFixed(1));
+
+                // Check boundary and trigger alert only on state change
+                bool currentBoundaryExceeded = distance.value > boundaryDistance.value;
+                
+                if (currentBoundaryExceeded != _previousBoundaryState) {
+                  // Boundary state changed - trigger alert
+                  _previousBoundaryState = currentBoundaryExceeded;
+                  
+                  if (currentBoundaryExceeded) {
+                    // Child exceeded boundary - critical alert
+                    await _triggerBoundaryAlert(true);
+                  } else {
+                    // Child returned to safe range - success alert
+                    await _triggerBoundaryAlert(false);
+                  }
+                  
+                  isBoundaryExceeded.value = currentBoundaryExceeded;
+                  lastAlertTime.value = DateTime.now();
+                }
               }
             } catch (_) {}
           }
@@ -182,5 +204,29 @@ class MainController extends GetxController {
         print("BLE Decode Error: $e");
       }
     });
+  }
+
+  /// Trigger boundary exceeded or safe return alert
+  Future<void> _triggerBoundaryAlert(bool isCritical) async {
+    try {
+      // Vibrate to get attention
+      if (isCritical) {
+        // Critical alert - strong vibration pattern
+        HapticFeedback.vibrate();
+        await Future.delayed(const Duration(milliseconds: 150));
+        HapticFeedback.vibrate();
+        await Future.delayed(const Duration(milliseconds: 150));
+        HapticFeedback.vibrate();
+        await Future.delayed(const Duration(milliseconds: 150));
+        HapticFeedback.vibrate();
+      } else {
+        // Safe return - gentle vibration pattern
+        HapticFeedback.vibrate();
+        await Future.delayed(const Duration(milliseconds: 200));
+        HapticFeedback.vibrate();
+      }
+    } catch (e) {
+      print("Alert error: $e");
+    }
   }
 }
