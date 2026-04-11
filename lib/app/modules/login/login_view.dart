@@ -264,7 +264,6 @@ class _SecurityBadge extends StatelessWidget {
         ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 8, height: 8,
@@ -274,12 +273,14 @@ class _SecurityBadge extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Text(
-            'Your data is protected by end-to-end encryption',
-            style: AppTextStyles.labelMd(
-              color: AppColors.onTertiaryFixedVar,
+          Expanded(
+            child: Text(
+              'Your data is protected by end-to-end encryption',
+              style: AppTextStyles.labelMd(
+                color: AppColors.onTertiaryFixedVar,
+              ),
+              softWrap: true,
             ),
-            softWrap: true,
           ),
         ],
       ),

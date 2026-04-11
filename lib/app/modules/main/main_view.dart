@@ -43,53 +43,83 @@ class _DashboardHeader extends GetView<MainController> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Child Safety', style: AppTextStyles.headlineLg(color: Colors.white)),
-            const SizedBox(height: 6),
-            Obx(() => Text(
-              '${controller.childName.value}\'s realtime tracker dashboard',
-              style: AppTextStyles.bodySm(color: Colors.white70),
-            )),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Child Safety', style: AppTextStyles.headlineLg(color: Colors.white)),
+              const SizedBox(height: 6),
+              Obx(() => Text(
+                '${controller.childName.value}\'s realtime tracker dashboard',
+                style: AppTextStyles.bodySm(color: Colors.white70),
+              )),
+            ],
+          ),
         ),
-        GestureDetector(
-          onTap: controller.toggleBluetooth,
-          child: Obx(() {
-            final active = controller.isConnected.value || controller.isScanning.value;
-            final color = active ? const Color(0xFF144C1C) : const Color(0xFF331F2A);
-            final dotColor = active ? const Color(0xFF7AE09D) : const Color(0xFFE47B7B);
-            
-            String btnText = 'Connect';
-            if (controller.isConnected.value) {
-              btnText = 'Connected';
-            } else if (controller.isScanning.value) {
-              btnText = 'Scanning...';
-            }
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            GestureDetector(
+              onTap: controller.toggleBluetooth,
+              child: Obx(() {
+                final active = controller.isConnected.value || controller.isScanning.value;
+                final color = active ? const Color(0xFF144C1C) : const Color(0xFF331F2A);
+                final dotColor = active ? const Color(0xFF7AE09D) : const Color(0xFFE47B7B);
 
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: dotColor,
-                    ),
+                String btnText = 'Connect';
+                if (controller.isConnected.value) {
+                  btnText = 'Connected';
+                } else if (controller.isScanning.value) {
+                  btnText = 'Scanning...';
+                }
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  const SizedBox(width: 8),
-                  Text(btnText, style: AppTextStyles.bodySm(color: Colors.white)),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: dotColor,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(btnText, style: AppTextStyles.bodySm(color: Colors.white)),
+                    ],
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 40,
+              child: ElevatedButton.icon(
+                onPressed: controller.logout,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3A1F1F),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: Text(
+                  'Logout',
+                  style: AppTextStyles.bodySm(color: Colors.white),
+                ),
               ),
-            );
-          }),
+            ),
+          ],
         ),
       ],
     );

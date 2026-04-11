@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../routes/app_routes.dart';
 
 class MainController extends GetxController {
+  static const String boundaryAlertAsset = 'audio/boundary_alert.mp3';
+
   // Reactive properties that the view will listen to
   final distance = 2.8.obs;
   final headingAngle = 0.0.obs; // In degrees
@@ -24,6 +28,7 @@ class MainController extends GetxController {
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   BluetoothDevice? _espDevice;
   bool _previousBoundaryState = false; // Track state change
+  final AudioPlayer _alertPlayer = AudioPlayer();
 
   static const String SERVICE_UUID = "12345678-1234-1234-1234-123456789abc";
   static const String CHARACTERISTIC_UUID = "87654321-4321-4321-4321-cba987654321";
@@ -39,6 +44,7 @@ class MainController extends GetxController {
   void onClose() {
     _scanSubscription?.cancel();
     _espDevice?.disconnect();
+    _alertPlayer.dispose();
     super.onClose();
   }
 
@@ -78,6 +84,24 @@ class MainController extends GetxController {
       }
     } catch (_) {
       // Keep the Auth display name fallback if Firestore is unavailable.
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      childName.value = "Child";
+      isConnected.value = false;
+      isScanning.value = false;
+      directionLabel.value = "Disconnected";
+      await _espDevice?.disconnect();
+      Get.offAllNamed(AppRoutes.login);
+    } catch (_) {
+      Get.snackbar(
+        'Logout Failed',
+        'Unable to log out right now. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
@@ -251,6 +275,7 @@ class MainController extends GetxController {
         HapticFeedback.vibrate();
         await Future.delayed(const Duration(milliseconds: 150));
         HapticFeedback.vibrate();
+        await _playBoundaryAlertSound();
       } else {
         // Safe return - gentle vibration pattern
         HapticFeedback.vibrate();
@@ -259,6 +284,15 @@ class MainController extends GetxController {
       }
     } catch (e) {
       print("Alert error: $e");
+    }
+  }
+
+  Future<void> _playBoundaryAlertSound() async {
+    try {
+      await _alertPlayer.stop();
+      await _alertPlayer.play(AssetSource(boundaryAlertAsset));
+    } catch (_) {
+      // The asset may not exist yet while the alert file is being prepared.
     }
   }
 }

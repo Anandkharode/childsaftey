@@ -9,6 +9,8 @@ This project is a Flutter mobile app for monitoring a child-carrying BLE device,
 - a BLE scan/connect flow using `flutter_blue_plus`
 - a dashboard that estimates child distance and heading
 - safe-range alerts when the child crosses a configured distance boundary
+- asset-based alert sound playback
+
 
 At a high level, the app combines three systems:
 
@@ -103,6 +105,20 @@ This gives redundancy and makes UI personalization more reliable.
 2. `signInWithEmailAndPassword(...)` authenticates with Firebase.
 3. On success, GetX routes to `AppRoutes.main`.
 
+### Logout
+
+### Files
+
+- `lib/app/modules/main/main_controller.dart`
+- `lib/app/modules/main/main_view.dart`
+
+### Sequence
+
+1. User taps the logout button on the dashboard.
+2. Firebase Auth signs out the active user.
+3. The dashboard resets local BLE connection state.
+4. The app routes back to `AppRoutes.login`.
+
 ### Session persistence
 
 Firebase Auth already persists the signed-in user on mobile by default. That means the user usually should not need to log in every time the app opens.
@@ -149,6 +165,7 @@ When the dashboard controller starts:
 - status banner
 - safe-range title
 - radar legend label
+- dashboard header beside the new logout action
 
 Because `childName` is stored as an `RxString`, any widget wrapped in `Obx(...)` rebuilds automatically when the profile data arrives.
 
@@ -273,7 +290,7 @@ If the child crosses the threshold:
 
 - critical alert
   - several quick vibration pulses
-  -along with an alert sound on connected device
+  - app tries to play `assets/audio/boundary_alert.mp3`
 - safe return alert
   - gentler vibration pattern
 
@@ -281,7 +298,43 @@ If the child crosses the threshold:
 
 Without state tracking, the app would trigger alerts continuously on every measurement while the child remains outside the boundary. The controller avoids this by only alerting when the safe/out-of-range state changes.
 
-## 9. UI Reactivity with GetX
+## 9. Asset Pipeline
+
+### Files and folders
+
+- `assets/images/app_icon.png`
+- `assets/audio/boundary_alert.mp3`
+- `pubspec.yaml`
+
+### What happens
+
+1. `pubspec.yaml` declares `assets/images/` and `assets/audio/`.
+2. The launcher icon source image is `assets/images/app_icon.png`.
+3. `flutter_launcher_icons` uses that image to generate Android and iOS app icons.
+4. Boundary alert playback uses `assets/audio/boundary_alert.mp3`.
+5. If the child crosses the configured boundary, the app plays that asset when available.
+
+### How to update the alert sound
+
+Put your sound file at:
+
+- `assets/audio/boundary_alert.mp3`
+
+Then run:
+
+```bash
+flutter pub get
+```
+
+### How to regenerate the app icon
+
+After changing `assets/images/app_icon.png`, run:
+
+```bash
+dart run flutter_launcher_icons
+```
+
+## 10. UI Reactivity with GetX
 
 ### Pattern used
 
@@ -299,7 +352,7 @@ Widgets use `Obx(() { ... })` to rebuild automatically when those values change.
 - dashboard updates live from BLE data
 - profile name updates as soon as it is loaded
 
-## 10. Navigation Model
+## 11. Navigation Model
 
 ### Files
 
@@ -321,7 +374,7 @@ Widgets use `Obx(() { ... })` to rebuild automatically when those values change.
 
 Each route has a binding that injects its controller when the page is opened. This keeps controller creation scoped to the feature page.
 
-## 11. Low-Level Data Lifecycle
+## 12. Low-Level Data Lifecycle
 
 ### From registration input to dashboard label
 
@@ -349,7 +402,7 @@ Each route has a binding that injects its controller when the page is opened. Th
 7. Text, signal bars, banner, and radar repaint automatically.
 8. Boundary logic evaluates whether an alert should fire.
 
-## 12. Files Most Important to Understand
+## 13. Files Most Important to Understand
 
 - `lib/main.dart`
   - app bootstrapping
@@ -360,7 +413,9 @@ Each route has a binding that injects its controller when the page is opened. Th
 - `lib/app/modules/signup/signup_controller.dart`
   - account creation and profile persistence
 - `lib/app/modules/main/main_controller.dart`
-  - BLE, distance calculation, alerts, and profile loading
+  - BLE, distance calculation, alerts, logout, sound playback, and profile loading
 - `lib/app/modules/main/main_view.dart`
-  - live dashboard UI
+  - live dashboard UI including connection and logout controls
+- `pubspec.yaml`
+  - dependencies, assets, and launcher icon configuration
 
