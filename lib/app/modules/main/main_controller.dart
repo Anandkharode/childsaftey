@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
@@ -11,6 +13,7 @@ class MainController extends GetxController {
   final distance = 2.8.obs;
   final headingAngle = 0.0.obs; // In degrees
   final directionLabel = "Disconnected".obs;
+  final childName = "Child".obs;
 
   final boundaryDistance = 3.0.obs; // User-defined boundary limit in meters
   final isConnected = false.obs;
@@ -28,6 +31,7 @@ class MainController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    loadChildProfile();
     startBleScan();
   }
 
@@ -47,6 +51,33 @@ class MainController extends GetxController {
       directionLabel.value = "Disconnected";
     } else {
       startBleScan();
+    }
+  }
+
+  Future<void> loadChildProfile() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      childName.value = "Child";
+      return;
+    }
+
+    final authName = user.displayName?.trim();
+    if (authName != null && authName.isNotEmpty) {
+      childName.value = authName;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final firestoreName = doc.data()?['childName']?.toString().trim();
+      if (firestoreName != null && firestoreName.isNotEmpty) {
+        childName.value = firestoreName;
+      }
+    } catch (_) {
+      // Keep the Auth display name fallback if Firestore is unavailable.
     }
   }
 
@@ -196,6 +227,7 @@ class MainController extends GetxController {
                   isBoundaryExceeded.value = currentBoundaryExceeded;
                   lastAlertTime.value = DateTime.now();
                 }
+                print("RSSI:$rssi");
               }
             } catch (_) {}
           }

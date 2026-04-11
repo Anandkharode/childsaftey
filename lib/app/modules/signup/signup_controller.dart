@@ -59,7 +59,7 @@ class SignupController extends GetxController {
         colorText: Colors.white,
       );
 
-      Get.offNamed(AppRoutes.login);
+      Get.offAllNamed(AppRoutes.main);
     } on FirebaseAuthException catch (e) {
       Get.snackbar(
         'Signup Failed', e.message ?? 'Unknown error occurred.',

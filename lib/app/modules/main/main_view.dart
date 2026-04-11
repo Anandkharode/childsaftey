@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'main_controller.dart';
@@ -49,7 +48,10 @@ class _DashboardHeader extends GetView<MainController> {
           children: [
             Text('Child Safety', style: AppTextStyles.headlineLg(color: Colors.white)),
             const SizedBox(height: 6),
-            Text('Realtime tracker dashboard', style: AppTextStyles.bodySm(color: Colors.white70)),
+            Obx(() => Text(
+              '${controller.childName.value}\'s realtime tracker dashboard',
+              style: AppTextStyles.bodySm(color: Colors.white70),
+            )),
           ],
         ),
         GestureDetector(
@@ -60,8 +62,11 @@ class _DashboardHeader extends GetView<MainController> {
             final dotColor = active ? const Color(0xFF7AE09D) : const Color(0xFFE47B7B);
             
             String btnText = 'Connect';
-            if (controller.isConnected.value) btnText = 'Connected';
-            else if (controller.isScanning.value) btnText = 'Scanning...';
+            if (controller.isConnected.value) {
+              btnText = 'Connected';
+            } else if (controller.isScanning.value) {
+              btnText = 'Scanning...';
+            }
 
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -97,11 +102,14 @@ class _StatusBanner extends GetView<MainController> {
     return Obx(() {
       final isExceeded = controller.isBoundaryExceeded.value;
       final bannerColor = isExceeded ? const Color(0xFF3A1F1F) : const Color(0xFF2F3B56);
-      final borderColor = isExceeded ? Color.fromARGB(255, 230, 123, 123).withOpacity(0.4) : Colors.white12;
+      final borderColor = isExceeded
+          ? const Color.fromARGB(255, 230, 123, 123).withValues(alpha: 0.4)
+          : Colors.white12;
       final iconBgColor = isExceeded ? const Color(0xFFB82A2A) : const Color(0xFF8C4A03);
+      final childName = controller.childName.value;
       final warningText = isExceeded 
-        ? 'CHILD OUT OF SAFE RANGE!'
-        : 'Child is heading ${controller.directionLabel.value} (${controller.distance.value}m)';
+        ? '$childName is out of safe range!'
+        : '$childName is heading ${controller.directionLabel.value} (${controller.distance.value}m)';
       
       return Container(
         width: double.infinity,
@@ -155,7 +163,7 @@ class _StatusCard extends GetView<MainController> {
         border: Border.all(color: Colors.white10),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
+            color: Colors.black.withValues(alpha: 0.18),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -169,7 +177,7 @@ class _StatusCard extends GetView<MainController> {
             children: [
               Obx(() => Text(
                 controller.distance.value <= controller.boundaryDistance.value 
-                  ? 'Child in Safe Range' 
+                  ? '${controller.childName.value} in Safe Range' 
                   : 'Out of Range!', 
                 style: AppTextStyles.titleMd(
                   color: controller.distance.value <= controller.boundaryDistance.value 
@@ -339,7 +347,11 @@ class _RadarCard extends GetView<MainController> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Child Name', style: AppTextStyles.titleMd(color: Colors.white), overflow: TextOverflow.ellipsis),
+                              Obx(() => Text(
+                                controller.childName.value,
+                                style: AppTextStyles.titleMd(color: Colors.white),
+                                overflow: TextOverflow.ellipsis,
+                              )),
                               Text('Child', style: AppTextStyles.labelSm(color: Colors.white54), overflow: TextOverflow.ellipsis),
                             ],
                           ),

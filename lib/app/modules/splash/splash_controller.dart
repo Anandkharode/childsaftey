@@ -2,6 +2,7 @@
 // app/modules/splash/splash_controller.dart
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:get/get.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../routes/app_routes.dart';
 
 class SplashController extends GetxController {
@@ -22,6 +23,8 @@ class SplashController extends GetxController {
     await Future.delayed(const Duration(milliseconds: 500));
     progress.value = 1.0;
     await Future.delayed(const Duration(milliseconds: 700));
-    Get.offAllNamed(AppRoutes.login);
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final nextRoute = currentUser == null ? AppRoutes.login : AppRoutes.main;
+    Get.offAllNamed(nextRoute);
   }
 }
