@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'main_controller.dart';
 import '../../core/theme/app_text_styles.dart';
-import '../../models/tracking_zone.dart';
+import '../../models/safety_zone.dart';
 
 class MainView extends GetView<MainController> {
   const MainView({super.key});
@@ -23,6 +23,8 @@ class MainView extends GetView<MainController> {
                 const SizedBox(height: 18),
                 _StatusBanner(),
                 const SizedBox(height: 20),
+                _SafetyZoneSelector(),
+                const SizedBox(height: 20),
                 _StatusCard(),
                 const SizedBox(height: 22),
                 SizedBox(
@@ -35,6 +37,67 @@ class MainView extends GetView<MainController> {
         ),
       ),
     );
+  }
+}
+
+class _SafetyZoneSelector extends GetView<MainController> {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Safety Zone', style: AppTextStyles.titleMd(color: Colors.white)),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [..._buildZoneCards(context)]),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildZoneCards(BuildContext context) {
+    return [
+      SafetyZone.nearChild,
+      SafetyZone.sameRoom,
+      SafetyZone.homeZone,
+      SafetyZone.extendedZone,
+    ].map((zone) {
+      return Obx(() {
+        final isSelected = controller.selectedSafetyZone.value == zone;
+        final bgColor = isSelected
+            ? const Color(0xFF2A7F5A)
+            : const Color(0xFF0F1F3A);
+        final borderColor = isSelected
+            ? const Color(0xFF7BE4A5)
+            : const Color(0xFF3A5A7F);
+
+        return GestureDetector(
+          onTap: () => controller.saveSelectedZone(zone),
+          child: Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderColor, width: isSelected ? 2 : 1),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(zone.emoji, style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 6),
+                Text(
+                  zone.displayName,
+                  style: AppTextStyles.labelSm(color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      });
+    }).toList();
   }
 }
 
@@ -147,51 +210,35 @@ class _StatusBanner extends GetView<MainController> {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final zone = controller.currentZone.value;
-      final isOutOfRange = zone == TrackingZone.outOfRange;
+      final isOutOfZone = controller.isBoundaryExceeded.value;
 
-      // Zone-based colors
-      final bannerColor = isOutOfRange
-          ? const Color(0xFF3A1F1F)
-          : zone == TrackingZone.warning
-          ? const Color(0xFF3A3018)
-          : const Color(0xFF2F3B56);
-
-      final borderColor = isOutOfRange
-          ? const Color.fromARGB(255, 230, 123, 123).withValues(alpha: 0.4)
-          : zone == TrackingZone.warning
-          ? const Color.fromARGB(255, 255, 200, 87).withValues(alpha: 0.4)
-          : Colors.white12;
-
-      final iconBgColor = isOutOfRange
-          ? const Color(0xFFB82A2A)
-          : zone == TrackingZone.warning
-          ? const Color(0xFFD4944B)
-          : const Color(0xFF2A7F5A);
-
-      final childName = controller.childName.value;
-      
-      // Zone-based status text and color
-      late String statusText;
+      // Status-based colors
+      late Color bannerColor;
+      late Color borderColor;
+      late Color iconBgColor;
+      late IconData iconData;
       late Color statusColor;
+      late String statusText;
 
-      switch (zone) {
-        case TrackingZone.safe:
-          statusText = '$childName is in SAFE zone';
-          statusColor = const Color(0xFF7BE4A5);
-          break;
-        case TrackingZone.warning:
-          statusText = '$childName is in WARNING zone';
-          statusColor = const Color(0xFFFFC857);
-          break;
-        case TrackingZone.outOfRange:
-          statusText = '$childName is OUT OF RANGE!';
-          statusColor = const Color(0xFFE47B7B);
-          break;
-        case TrackingZone.disconnected:
-          statusText = 'Disconnected from $childName';
-          statusColor = const Color(0xFFB0B0B0);
-          break;
+      if (isOutOfZone) {
+        bannerColor = const Color(0xFF3A1F1F);
+        borderColor = const Color.fromARGB(
+          255,
+          230,
+          123,
+          123,
+        ).withValues(alpha: 0.4);
+        iconBgColor = const Color(0xFFB82A2A);
+        iconData = Icons.error_rounded;
+        statusColor = const Color(0xFFE47B7B);
+        statusText = '🔴 OUT OF RANGE!';
+      } else {
+        bannerColor = const Color(0xFF2F3B56);
+        borderColor = Colors.white12;
+        iconBgColor = const Color(0xFF2A7F5A);
+        iconData = Icons.check_circle_rounded;
+        statusColor = const Color(0xFF7BE4A5);
+        statusText = '🟢 ${controller.childName.value} is Safe';
       }
 
       return Container(
@@ -200,7 +247,7 @@ class _StatusBanner extends GetView<MainController> {
         decoration: BoxDecoration(
           color: bannerColor,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: borderColor, width: isOutOfRange ? 1.5 : 1),
+          border: Border.all(color: borderColor, width: isOutOfZone ? 1.5 : 1),
         ),
         child: Row(
           children: [
@@ -211,23 +258,13 @@ class _StatusBanner extends GetView<MainController> {
                 color: iconBgColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                isOutOfRange
-                    ? Icons.error_rounded
-                    : zone == TrackingZone.warning
-                    ? Icons.warning_amber_rounded
-                    : Icons.check_circle_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
+              child: Icon(iconData, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 statusText,
-                style: AppTextStyles.titleMd(
-                  color: statusColor,
-                ),
+                style: AppTextStyles.titleMd(color: statusColor),
                 softWrap: true,
               ),
             ),
@@ -259,141 +296,95 @@ class _StatusCard extends GetView<MainController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Direction Display
+          // Active Safety Zone Display
           Obx(() {
-            final direction = controller.directionLabel.value;
-            final directionDisplay = direction.isEmpty || direction == "Disconnected"
-                ? 'Direction: --'
-                : 'Direction: $direction';
+            final zone = controller.selectedSafetyZone.value;
+            final status = controller.currentStatus.value;
 
-            return Text(
-              directionDisplay,
-              style: AppTextStyles.bodySm(color: Colors.white),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Active Safety Zone',
+                      style: AppTextStyles.bodySm(color: Colors.white70),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A7F5A),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        status,
+                        style: AppTextStyles.labelSm(
+                          color: const Color(0xFF7BE4A5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${zone.emoji} ${zone.displayName}',
+                  style: AppTextStyles.titleMd(color: Colors.white),
+                ),
+              ],
             );
           }),
           const SizedBox(height: 16),
-          
-          // Current Zone Display
+
+          // Direction Display
           Obx(() {
-            final zone = controller.currentZone.value;
-            final zoneColor = Color(zone.displayColor);
-            
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            final direction = controller.directionLabel.value;
+            final directionDisplay =
+                direction.isEmpty || direction == "Disconnected"
+                ? 'Direction: --'
+                : 'Direction: $direction';
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: zoneColor,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      zone.displayName,
-                      style: AppTextStyles.titleMd(color: zoneColor),
-                    ),
-                  ],
+                Text(
+                  directionDisplay,
+                  style: AppTextStyles.bodySm(color: Colors.white),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             );
           }),
-          const SizedBox(height: 20),
-          
-          // Zone Slider Control
+          const SizedBox(height: 16),
+
+          // WiFi Signal Strength Display
           Obx(() {
-            final distance = controller.distance.value;
-            final boundary = controller.boundaryDistance.value;
-            // Map distance to zone: 0-2m = Safe, 2-5m = Warning, 5+ = Out of Range
-            late String zoneLabel;
-            late Color zoneColor;
-            
-            if (distance <= 2.0) {
-              zoneLabel = 'Safe Zone';
-              zoneColor = const Color(0xFF7BE4A5);
-            } else if (distance <= boundary) {
-              zoneLabel = 'Warning Zone';
-              zoneColor = const Color(0xFFFFC857);
-            } else {
-              zoneLabel = 'Out of Range';
-              zoneColor = const Color(0xFFE47B7B);
-            }
-            
-            return Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Set Zone for Child',
-                      style: AppTextStyles.bodySm(color: Colors.white70),
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: zoneColor,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          zoneLabel,
-                          style: AppTextStyles.titleMd(color: zoneColor),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SliderTheme(
-                  data: SliderThemeData(
-                    trackHeight: 8.0,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 12.0,
-                      elevation: 4.0,
-                    ),
-                    activeTrackColor: zoneColor,
-                    inactiveTrackColor: const Color(0xFF1F3A52),
-                    thumbColor: zoneColor,
+            final wifiRssi = controller.currentWifiRssi.value;
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFF5ACEFF), width: 1.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'WiFi Signal',
+                    style: AppTextStyles.bodySm(color: Colors.white70),
                   ),
-                  child: Slider(
-                    value: boundary.clamp(0.0, 10.0),
-                    min: 0.0,
-                    max: 10.0,
-                    divisions: 100,
-                    label: 'Boundary',
-                    onChanged: (value) {
-                      controller.updateBoundaryDistance(value);
-                    },
+                  Text(
+                    wifiRssi != null ? '$wifiRssi dBm' : 'N/A',
+                    style: AppTextStyles.titleSm(
+                      color: const Color(0xFF5ACEFF),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Safe',
-                      style: AppTextStyles.labelSm(color: const Color(0xFF7BE4A5)),
-                    ),
-                    Text(
-                      'Warning',
-                      style: AppTextStyles.labelSm(color: const Color(0xFFFFC857)),
-                    ),
-                    Text(
-                      'Out',
-                      style: AppTextStyles.labelSm(color: const Color(0xFFE47B7B)),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             );
           }),
         ],
@@ -425,8 +416,8 @@ class _RadarCard extends GetView<MainController> {
                       painter: _RadarPainter(
                         heading: controller.headingAngle.value,
                         distance: controller.distance.value,
-                        boundaryDistance: controller.boundaryDistance.value,
-                        zone: controller.currentZone.value,
+                        selectedZone: controller.selectedSafetyZone.value,
+                        currentStatus: controller.currentStatus.value,
                       ),
                       child: const SizedBox.expand(),
                     ),
@@ -546,14 +537,14 @@ class _RadarCard extends GetView<MainController> {
 class _RadarPainter extends CustomPainter {
   final double heading;
   final double distance;
-  final double boundaryDistance;
-  final TrackingZone zone;
+  final SafetyZone selectedZone;
+  final String currentStatus;
 
   _RadarPainter({
     required this.heading,
     required this.distance,
-    required this.boundaryDistance,
-    required this.zone,
+    required this.selectedZone,
+    required this.currentStatus,
   });
 
   @override
@@ -569,35 +560,28 @@ class _RadarPainter extends CustomPainter {
       ..strokeWidth = 1.0
       ..color = const Color.fromRGBO(255, 255, 255, 0.12);
 
-    // Draw grid natively
+    // Draw grid circles
     for (int i = 1; i <= 5; i++) {
       canvas.drawCircle(center, maxRadius * 0.2 * i, gridPaint);
     }
 
-    // ─ NEW: Draw zone-based circles with zone colors ─
-    _drawZoneCircles(canvas, center, maxRadius);
-
-    // Draw boundary ring natively
-    final boundaryPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = const Color.fromRGBO(90, 206, 255, 0.8)
-      ..strokeWidth = 2.0;
-
-    final boundaryRadius = maxRadius * ((boundaryDistance / 5.0).clamp(0.0, 1.0));
-    canvas.drawCircle(
-      center,
-      boundaryRadius,
-      boundaryPaint,
-    );
+    // ─ Draw selected safety zone circles ─
+    _drawSafetyZoneCircles(canvas, center, maxRadius);
 
     final linePaint = Paint()
       ..style = PaintingStyle.stroke
       ..color = const Color(0xFF5ACEFF)
       ..strokeWidth = 2.4;
 
-    // Enforce visual distance
+    // Keep the tracker bead visible even when the calculated value is tiny.
     final double visualDistance = distance < 0.75 ? 0.75 : distance;
-    final double distanceScale = (visualDistance / 5.0).clamp(0.0, 1.0);
+
+    // Scale the tracker position to the radar.
+    final double maxDistanceForScale = 15.0; // Extended zone max
+    final double distanceScale = (visualDistance / maxDistanceForScale).clamp(
+      0.0,
+      1.0,
+    );
 
     final double angleRad = (heading - 90) * math.pi / 180.0;
     final double dx = maxRadius * distanceScale * math.cos(angleRad);
@@ -607,85 +591,70 @@ class _RadarPainter extends CustomPainter {
     // Draw tracker line
     canvas.drawLine(center, end, linePaint);
 
-    // Draw Tracker Bead with zone color
-    final beadColor = Color(zone.displayColor);
+    // Draw Tracker Bead with status color
+    late Color beadColor;
+    switch (currentStatus) {
+      case 'SAFE':
+        beadColor = const Color(0xFF7BE4A5); // Green
+        break;
+      case 'WARNING':
+        beadColor = const Color(0xFFFFC857); // Yellow
+        break;
+      case 'OUT_OF_RANGE':
+        beadColor = const Color(0xFFE47B7B); // Red
+        break;
+      default:
+        beadColor = const Color(0xFFB0B0B0); // Gray
+    }
+
     final beadPaint = Paint()
       ..style = PaintingStyle.fill
       ..color = beadColor;
     canvas.drawCircle(end, 6.0, beadPaint);
-
-    // Labels
-    final labelStyle = const TextStyle(color: Colors.white54, fontSize: 11);
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-    for (int i = 1; i <= 5; i++) {
-      textPainter.text = TextSpan(text: '${i}m', style: labelStyle);
-      textPainter.layout();
-      final offset = Offset(
-        center.dx - textPainter.width / 2,
-        center.dy - maxRadius * 0.2 * i - textPainter.height / 2,
-      );
-      textPainter.paint(canvas, offset);
-    }
   }
 
-  /// Draw zone-based concentric circles with zone colors
-  void _drawZoneCircles(Canvas canvas, Offset center, double maxRadius) {
-    // Safe zone circle (0-2m) - Green
-    final safePaint = Paint()
+  /// Draw safety zone circles based on selected zone
+  void _drawSafetyZoneCircles(Canvas canvas, Offset center, double maxRadius) {
+    final zoneFactor = selectedZone.radarCircleFactor;
+
+    // Draw the selected zone boundary circle
+    final zoneBoundaryPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..color = const Color(0xFF7BE4A5).withValues(alpha: 0.3);
-    canvas.drawCircle(center, maxRadius * 0.2, safePaint);
+      ..strokeWidth = 2.5
+      ..color = Color(selectedZone.displayColor).withValues(alpha: 0.6);
+    canvas.drawCircle(center, maxRadius * zoneFactor, zoneBoundaryPaint);
 
-    // Warning zone circle (2-5m) - Yellow
-    final warningPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..color = const Color(0xFFFFC857).withValues(alpha: 0.25);
-    canvas.drawCircle(center, maxRadius * 0.5, warningPaint);
+    // Draw the zone boundary fill (highlight area)
+    final zoneFillPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = Color(selectedZone.displayColor).withValues(alpha: 0.06);
+    canvas.drawCircle(center, maxRadius * zoneFactor, zoneFillPaint);
 
-    // Out of range circle (>5m) - Red
-    final outOfRangePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..color = const Color(0xFFE47B7B).withValues(alpha: 0.2);
-    canvas.drawCircle(center, maxRadius * 0.8, outOfRangePaint);
+    // Label for the zone
+    final labelStyle = const TextStyle(
+      color: Color.fromRGBO(255, 255, 255, 0.7),
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+    );
+    final textPainter = TextPainter(
+      text: TextSpan(text: selectedZone.displayName, style: labelStyle),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
 
-    // Highlight the current zone with filled background
-    late Paint highlightPaint;
-    late double highlightRadius;
-
-    switch (zone) {
-      case TrackingZone.safe:
-        highlightPaint = Paint()
-          ..style = PaintingStyle.fill
-          ..color = const Color(0xFF7BE4A5).withValues(alpha: 0.08);
-        highlightRadius = maxRadius * 0.2;
-        break;
-      case TrackingZone.warning:
-        highlightPaint = Paint()
-          ..style = PaintingStyle.fill
-          ..color = const Color(0xFFFFC857).withValues(alpha: 0.08);
-        highlightRadius = maxRadius * 0.5;
-        break;
-      case TrackingZone.outOfRange:
-        highlightPaint = Paint()
-          ..style = PaintingStyle.fill
-          ..color = const Color(0xFFE47B7B).withValues(alpha: 0.1);
-        highlightRadius = maxRadius * 0.8;
-        break;
-      case TrackingZone.disconnected:
-        return; // No highlight for disconnected
-    }
-
-    canvas.drawCircle(center, highlightRadius, highlightPaint);
+    // Position label at top of zone circle
+    final labelOffset = Offset(
+      center.dx - textPainter.width / 2,
+      center.dy - maxRadius * zoneFactor - 30,
+    );
+    textPainter.paint(canvas, labelOffset);
   }
 
   @override
   bool shouldRepaint(covariant _RadarPainter oldDelegate) {
     return oldDelegate.heading != heading ||
         oldDelegate.distance != distance ||
-        oldDelegate.boundaryDistance != boundaryDistance ||
-        oldDelegate.zone != zone;
+        oldDelegate.selectedZone != selectedZone ||
+        oldDelegate.currentStatus != currentStatus;
   }
 }
