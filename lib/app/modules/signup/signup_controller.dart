@@ -69,7 +69,7 @@ class SignupController extends GetxController {
       );
     } catch (e) {
       Get.snackbar(
-        'Error', 'Something went wrong. Please try again.',
+        'Signed ', 'up',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: const Color(0xFFBA1A1A),
         colorText: Colors.white,
